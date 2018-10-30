@@ -22,24 +22,20 @@ class Firewall (object):
     connection.addListeners(self)
     
     # Creates a new entry in the flow table that matches ARP traffic
+    # and floods to all ports
     msg = of.ofp_flow_mod() 
-    msg.match.dl_type = 0x0806
-
-    # Create a new action that floods matching packets to all ports except
-    # the port on which the packet was recieved
+    msg.match.dl_type = 0x0806 #ARP 
     msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
     connection.send(msg)
     
-    # Creates a new entry in the flow table that matches IP traffic
-    # (need to be a bit more specific here to filter on ICMP)
+    # Creates a new entry in the flow table that matches ICMP traffic
+    # and floods to all ports
     msg = of.ofp_flow_mod() 
-    msg.match.dl_type = 0x0800
-
-    # Create a new action that floods matching packets to all ports except
-    # the port on which the packet was recieved
+    msg.match.dl_type = 0x0800 #IPv4
+    msg.match.nw_proto = 1     #ICMP
     msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
     connection.send(msg)
-   
+
   def _handle_PacketIn (self, event):
     """
     Packets not handled by the router rules will be
