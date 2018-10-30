@@ -20,33 +20,35 @@ class Firewall (object):
 
     # This binds our PacketIn event listener
     connection.addListeners(self)
+    
+    # Creates a new entry in the flow table that matches ARP traffic
+    msg = of.ofp_flow_mod() 
+    msg.match.dl_type = 0x0806
 
-    #add switch rules here
+    # Create a new action that floods matching packets to all ports except
+    # the port on which the packet was recieved
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    connection.send(msg)
+    
+    # Creates a new entry in the flow table that matches IP traffic
+    # (need to be a bit more specific here to filter on ICMP)
+    msg = of.ofp_flow_mod() 
+    msg.match.dl_type = 0x0800
+
+    # Create a new action that floods matching packets to all ports except
+    # the port on which the packet was recieved
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    connection.send(msg)
    
   def _handle_PacketIn (self, event):
     """
     Packets not handled by the router rules will be
     forwarded to this method to be handled by the controller
     """
-
     packet = event.parsed
-    print("Recieved packet {} -> {}".format(packet.src, packet.dst))
-    # ARP  -> packet.type == 0x806
-
-    # Create flow that simply broadcasts any packet received
-    # The first time this is called, the router rules are set up.
-    # This method is not called for subsequent packets - the 
-    # router rules should forward them
-
-    msg = of.ofp_flow_mod() 
-    msg.idle_timeout = 10
-    msg.hard_timeout = 15
-
-    #msg.match.dl_type = 0x0806
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_ALL))
-    self.connection.send(msg)
-
     packet_in = event.ofp # The actual ofp_packet_in message.
+    print("Dropping packet {}".format(packet))
+
     
 def launch ():
   """
