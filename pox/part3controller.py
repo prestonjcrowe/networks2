@@ -46,22 +46,32 @@ class Part3Controller (object):
       print ("UNKNOWN SWITCH")
       exit(1)
 
+  # Set switches s1, s2, s3, cores21 to broadcast all packets
   def s1_setup(self):
-    #put switch 1 rules here
-    pass
+    msg = of.ofp_flow_mod() 
+    msg.match.dl_type = None
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    self.connection.send(msg)
 
   def s2_setup(self):
-    #put switch 2 rules here
-    pass
+    msg = of.ofp_flow_mod() 
+    msg.match.dl_type = None
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    self.connection.send(msg)
 
   def s3_setup(self):
-    #put switch 3 rules here
-    pass
+    msg = of.ofp_flow_mod() 
+    msg.match.dl_type = None
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    self.connection.send(msg)
 
   def cores21_setup(self):
-    #put core switch rules here
-    pass
+    msg = of.ofp_flow_mod() 
+    msg.match.dl_type = None
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    self.connection.send(msg)
 
+  # Here we need to parse out src / dst IP and route accordingly
   def dcs31_setup(self):
     #put datacenter switch rules here
     pass
