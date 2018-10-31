@@ -46,35 +46,71 @@ class Part3Controller (object):
       print ("UNKNOWN SWITCH")
       exit(1)
 
+
+  def flood(self):
+    msg = of.ofp_flow_mod()
+    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
+    self.connection.send(msg)
+
+  def ip_to_port(self, ip, port):
+    msg = of.ofp_flow_mod()
+    msg.priority = 0
+    msg.match.dl_type = 0x0800 #IPv4
+    msg.match.nw_dst = ip
+    msg.actions.append(of.ofp_action_output(port=port))
+    self.connection.send(msg)
+
   # Set switches s1, s2, s3, cores21 to broadcast all packets
   def s1_setup(self):
-    msg = of.ofp_flow_mod() 
-    msg.match.dl_type = None
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-    self.connection.send(msg)
+      self.flood()
 
   def s2_setup(self):
-    msg = of.ofp_flow_mod() 
-    msg.match.dl_type = None
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-    self.connection.send(msg)
+      self.flood()
 
   def s3_setup(self):
-    msg = of.ofp_flow_mod() 
-    msg.match.dl_type = None
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-    self.connection.send(msg)
-
-  def cores21_setup(self):
-    msg = of.ofp_flow_mod() 
-    msg.match.dl_type = None
-    msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-    self.connection.send(msg)
+      self.flood()
 
   # Here we need to parse out src / dst IP and route accordingly
+  def cores21_setup(self):
+      ips_to_ports = {
+        "10.0.1.10" : 1,
+        "10.0.2.20" : 2,
+        "10.0.3.30" : 3,
+        "10.0.4.40" : 4,
+        "172.16.10.100" : 5, 
+      }
+
+      # Block ICMP from hnotrust with high priority
+      msg = of.ofp_flow_mod()
+      msg.priority = 1
+      msg.match.dl_type = 0x0800 #IPv4
+      msg.match.nw_proto = 1     #ICMP
+      msg.match.in_port = ips_to_ports[IPS["hnotrust"][0]]
+      msg.actions.append(of.ofp_action_output(port=of.OFPP_NONE))
+      self.connection.send(msg)
+
+      # Block IPv4 from hnotrust to serv1 with high priority
+      msg = of.ofp_flow_mod()
+      msg.priority = 1
+      msg.match.dl_type = 0x0800 #IPv4
+      msg.match.nw_src = IPS["hnotrust"][0]
+      msg.match.nw_dst = IPS["serv1"][0]
+      msg.actions.append(of.ofp_action_output(port=of.OFPP_NONE))
+      self.connection.send(msg)
+      
+      # Pass all other IP traffic to correct port
+      for ip in ips_to_ports:
+          self.ip_to_port(ip, ips_to_ports[ip])
+
+      # Flood remainder
+      msg = of.ofp_flow_mod()
+      msg.priority = 0
+      msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
+      self.connection.send(msg)
+
+
   def dcs31_setup(self):
-    pass
-    #put datacenter switch rules here
+      self.flood()
 
   #used in part 4 to handle individual ARP packets
   #not needed for part 3 (USE RULES!)
@@ -91,27 +127,15 @@ class Part3Controller (object):
     Packets not handled by the router rules will be
     forwarded to this method to be handled by the controller
     """
-    # h10/s1    -> port 1
-    # h20       -> port 2
-    # h30       -> port 3
-    # dcs31     -> port 4
 
     packet = event.parsed # This is the parsed packet data.
-    packet_in = event.ofp
-    dst_port = event.port
-
     if not packet.parsed:
       log.warning("Ignoring incomplete packet")
       return
-    
-    print ("DPID: {} Unhandled packet: {}".format(str(self.connection.dpid), packet))
-    if self.connection.dpid == 31:
-      print("Setting new rules on switch 31")
-      msg = of.ofp_flow_mod()
-      msg.match.dl_src = packet.src
-      msg.match.dl_dst = packet.dst
-      msg.actions.append(of.ofp_action_output(port = dst_port))
-      self.connection.send(msg)
+
+    packet_in = event.ofp
+    print ("Unhandled packet from " + str(self.connection.dpid) + ":" + packet.dump())
+
 
 def launch ():
   """
