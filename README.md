@@ -4,3 +4,4 @@
 
 
 ![terry for good luck](https://kiwifarms.net/proxy.php?image=http%3A%2F%2Fi.imgur.com%2FllY02cp.png&hash=28cb02f3d1aa73606c1472cd7ce26140)
+![peepee](https://memegenerator.net/img/instances/66380809/1990-was-40-years-ago.jpg)
