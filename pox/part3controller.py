@@ -73,8 +73,8 @@ class Part3Controller (object):
 
   # Here we need to parse out src / dst IP and route accordingly
   def dcs31_setup(self):
-    #put datacenter switch rules here
     pass
+    #put datacenter switch rules here
 
   #used in part 4 to handle individual ARP packets
   #not needed for part 3 (USE RULES!)
@@ -91,14 +91,27 @@ class Part3Controller (object):
     Packets not handled by the router rules will be
     forwarded to this method to be handled by the controller
     """
+    # h10/s1    -> port 1
+    # h20       -> port 2
+    # h30       -> port 3
+    # dcs31     -> port 4
 
     packet = event.parsed # This is the parsed packet data.
+    packet_in = event.ofp
+    dst_port = event.port
+
     if not packet.parsed:
       log.warning("Ignoring incomplete packet")
       return
-
-    packet_in = event.ofp # The actual ofp_packet_in message.
-    print ("Unhandled packet from " + str(self.connection.dpid) + ":" + packet.dump())
+    
+    print ("DPID: {} Unhandled packet: {}".format(str(self.connection.dpid), packet))
+    if self.connection.dpid == 31:
+      print("Setting new rules on switch 31")
+      msg = of.ofp_flow_mod()
+      msg.match.dl_src = packet.src
+      msg.match.dl_dst = packet.dst
+      msg.actions.append(of.ofp_action_output(port = dst_port))
+      self.connection.send(msg)
 
 def launch ():
   """
