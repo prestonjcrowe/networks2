@@ -54,7 +54,7 @@ class Part3Controller (object):
 
   def ip_to_port(self, ip, port):
     msg = of.ofp_flow_mod()
-    msg.priority = 0
+    msg.priority = 1
     msg.match.dl_type = 0x0800 #IPv4
     msg.match.nw_dst = ip
     msg.actions.append(of.ofp_action_output(port=port))
@@ -76,38 +76,41 @@ class Part3Controller (object):
         "10.0.1.10" : 1,
         "10.0.2.20" : 2,
         "10.0.3.30" : 3,
-        "10.0.4.40" : 4,
+        "10.0.4.10" : 4,
         "172.16.10.100" : 5, 
       }
 
       # Block ICMP from hnotrust with high priority
       msg = of.ofp_flow_mod()
-      msg.priority = 1
+      msg.priority = 2
       msg.match.dl_type = 0x0800 #IPv4
       msg.match.nw_proto = 1     #ICMP
       msg.match.in_port = ips_to_ports[IPS["hnotrust"][0]]
-      msg.actions.append(of.ofp_action_output(port=of.OFPP_NONE))
       self.connection.send(msg)
 
       # Block IPv4 from hnotrust to serv1 with high priority
       msg = of.ofp_flow_mod()
-      msg.priority = 1
+      msg.priority = 2
       msg.match.dl_type = 0x0800 #IPv4
       msg.match.nw_src = IPS["hnotrust"][0]
       msg.match.nw_dst = IPS["serv1"][0]
-      msg.actions.append(of.ofp_action_output(port=of.OFPP_NONE))
       self.connection.send(msg)
       
       # Pass all other IP traffic to correct port
       for ip in ips_to_ports:
           self.ip_to_port(ip, ips_to_ports[ip])
 
-      # Flood remainder
+      # Flood ARP 
       msg = of.ofp_flow_mod()
-      msg.priority = 0
+      msg.match.dl_type = 0x0806 #ARP
+      msg.priority = 1
       msg.actions.append(of.ofp_action_output(port=of.OFPP_FLOOD))
       self.connection.send(msg)
 
+      # Drop remainder
+      msg = of.ofp_flow_mod()
+      msg.priority = 0
+      self.connection.send(msg)
 
   def dcs31_setup(self):
       self.flood()
