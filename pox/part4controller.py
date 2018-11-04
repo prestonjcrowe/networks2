@@ -98,6 +98,7 @@ class Part4Controller (object):
     forwarded to this method to be handled by the controller
     """
 
+    # arbitrary
     our_mac = EthAddr('00:00:00:00:00:07')
 
     packet = event.parsed # This is the parsed packet data.
@@ -105,31 +106,29 @@ class Part4Controller (object):
       log.warning("Ignoring incomplete packet")
       return
 
-    packet_in = event.ofp
-
-    # port the packet came in on
-    port = event.port
-
-    if packet.type == 0x806:
+    if packet.type == 0x806:  # ARP
         a = packet.payload
 
-        # install flow based on ARP
+        # install flow based on ARP: for all IP packets addressed
+        # to a.protosrc (whoever sent the ARP), change the ethernet
+        # header to theirs (a.hwsrc) and send it out on event.port
+        # (where we recieved this ARP from)
         msg = of.ofp_flow_mod()
         msg.priority = 0
-        msg.match.dl_type = 0x800
+        msg.match.dl_type = 0x800  # IPv4
         msg.match.nw_dst = a.protosrc
         msg.actions.append(of.ofp_action_dl_addr.set_dst(a.hwsrc))
         msg.actions.append(of.ofp_action_output(port=event.port))
         self.connection.send(msg)
 
-        # respond to the ARP with our own MAC address 
-        tmp = a.protosrc
-        a.protosrc = a.protodst
-        a.protosdst = tmp
-        tmp = a.hwsrc
-        a.hwsrc = a.hwdst
-        a.hwdst = tmp
+        # respond to the ARP with our MAC address so that we can handle
+        # their IP traffic in the future
         a.opcode = 2 # REPLY
+        tmp = a.protodst
+        a.protodst = a.protosrc
+        a.protosrc = tmp
+        a.hwdst = a.hwsrc
+        a.hwsrc = our_mac
         packet.dst = packet.src
         packet.src = our_mac
         self.resend_packet(packet, event.port)

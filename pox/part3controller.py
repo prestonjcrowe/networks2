@@ -52,11 +52,11 @@ class Part3Controller (object):
     msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
     self.connection.send(msg)
 
-  def ip_to_port(self, ip, port):
+  def ip_to_host_port(self, host, port):
     msg = of.ofp_flow_mod()
     msg.priority = 1
     msg.match.dl_type = 0x0800 #IPv4
-    msg.match.nw_dst = ip
+    msg.match.nw_dst = IPS[host][0] 
     msg.actions.append(of.ofp_action_output(port=port))
     self.connection.send(msg)
 
@@ -72,12 +72,12 @@ class Part3Controller (object):
 
   # Here we need to parse out src / dst IP and route accordingly
   def cores21_setup(self):
-      ips_to_ports = {
-        "10.0.1.10" : 1,
-        "10.0.2.20" : 2,
-        "10.0.3.30" : 3,
-        "10.0.4.10" : 4,
-        "172.16.10.100" : 5, 
+      host_ports = {
+        "h10" : 1,
+        "h20" : 2,
+        "h30" : 3,
+        "serv1" : 4,
+        "hnotrust" : 5, 
       }
 
       # Block ICMP from hnotrust with high priority
@@ -85,7 +85,7 @@ class Part3Controller (object):
       msg.priority = 2
       msg.match.dl_type = 0x0800 #IPv4
       msg.match.nw_proto = 1     #ICMP
-      msg.match.in_port = ips_to_ports[IPS["hnotrust"][0]]
+      msg.match.in_port = host_ports["hnotrust"]
       self.connection.send(msg)
 
       # Block IPv4 from hnotrust to serv1 with high priority
@@ -97,8 +97,8 @@ class Part3Controller (object):
       self.connection.send(msg)
       
       # Pass all other IP traffic to correct port
-      for ip in ips_to_ports:
-          self.ip_to_port(ip, ips_to_ports[ip])
+      for host in host_ports: 
+          self.ip_to_host_port(host, host_ports[host])
 
       # Flood ARP 
       msg = of.ofp_flow_mod()
