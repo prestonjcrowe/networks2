@@ -1,5 +1,5 @@
 # SDN Assignment
-This assignment consists of four network topologies emulated with mininet.
+Four network topologies emulated in mininet
 
 
 
